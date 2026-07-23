@@ -287,9 +287,155 @@
         </div>
     </div>
 </body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
     document.getElementById('page-title').textContent = 'Reports';
     document.getElementById('page-bread').textContent = 'Output / Reports';
+
+    const reportData = {
+        'Daily COD Summary': [
+            { date: '2026-07-01', collected: 125000, remitted: 118000, pending: 7000, note: 'Short remittance' },
+            { date: '2026-07-02', collected: 132500, remitted: 132500, pending: 0, note: 'Cleared' },
+            { date: '2026-07-03', collected: 98000, remitted: 90000, pending: 8000, note: 'Pending review' }
+        ],
+        'Monthly P&L Report': [
+            { month: '2026-07', revenue: 2450000, expense: 1750000, profit: 700000, margin: '28.6%' },
+            { month: '2026-06', revenue: 2280000, expense: 1680000, profit: 600000, margin: '26.3%' },
+            { month: '2026-05', revenue: 2140000, expense: 1600000, profit: 540000, margin: '25.2%' }
+        ],
+        'Freight Invoice Reconciliation': [
+            { invoice: 'LF-1001', billed: 1860, expected: 1740, variance: 120, status: 'Overcharged' },
+            { invoice: 'LF-1002', billed: 1580, expected: 1580, variance: 0, status: 'Matched' },
+            { invoice: 'LF-1003', billed: 2210, expected: 2060, variance: 150, status: 'Review needed' }
+        ],
+        'Returns Analysis Report': [
+            { sku: 'SKU-101', city: 'Lahore', returns: 18, rate: '9.2%', freight_cost: 5400, impact: 12000 },
+            { sku: 'SKU-205', city: 'Karachi', returns: 12, rate: '6.8%', freight_cost: 3600, impact: 9500 },
+            { sku: 'SKU-310', city: 'Islamabad', returns: 9, rate: '5.1%', freight_cost: 2900, impact: 7600 }
+        ],
+        'COD Ageing Report': [
+            { bucket: '0-7 Days', outstanding: 180000, count: 22, overdue: 'No' },
+            { bucket: '8-15 Days', outstanding: 96000, count: 14, overdue: 'No' },
+            { bucket: '16-30 Days', outstanding: 135000, count: 17, overdue: 'Yes' },
+            { bucket: '30+ Days', outstanding: 72000, count: 9, overdue: 'Yes' }
+        ],
+        'Tax Summary Report': [
+            { month: '2026-07', output_tax: 410000, input_tax: 296000, wht: 24000, net_payable: 90000 },
+            { month: '2026-06', output_tax: 388000, input_tax: 280000, wht: 22000, net_payable: 86000 },
+            { month: '2026-05', output_tax: 372000, input_tax: 271000, wht: 21000, net_payable: 80000 }
+        ],
+        'Expense Ledger Report': [
+            { category: 'Freight', amount: 184000, orders: 120, avg_cost: 1533 },
+            { category: 'Packaging', amount: 76000, orders: 120, avg_cost: 633 },
+            { category: 'Marketing', amount: 95000, orders: 120, avg_cost: 792 }
+        ],
+        'Vendor Ledger — Leopard': [
+            { invoice: 'INV-2401', date: '2026-07-05', debit: 118000, payment: 90000, balance: 28000 },
+            { invoice: 'INV-2402', date: '2026-07-10', debit: 76000, payment: 76000, balance: 0 },
+            { invoice: 'INV-2403', date: '2026-07-15', debit: 93000, payment: 50000, balance: 43000 }
+        ],
+        'SKU-Level Profitability': [
+            { sku: 'SKU-001', units: 420, revenue: 1680000, cogs: 1210000, gross_margin: '28.0%' },
+            { sku: 'SKU-002', units: 310, revenue: 1240000, cogs: 930000, gross_margin: '25.0%' },
+            { sku: 'SKU-003', units: 250, revenue: 1000000, cogs: 680000, gross_margin: '32.0%' }
+        ],
+        'City-wise Delivery Report': [
+            { city: 'Lahore', orders: 420, delivered: 402, returns: 18, cod: 185000 },
+            { city: 'Karachi', orders: 360, delivered: 348, returns: 12, cod: 162000 },
+            { city: 'Islamabad', orders: 280, delivered: 273, returns: 9, cod: 124000 }
+        ],
+        'Variance / Exception Report': [
+            { issue: 'Missing COD remittance', count: 5, impact: 42000, severity: 'High' },
+            { issue: 'Weight discrepancy', count: 3, impact: 15000, severity: 'Medium' },
+            { issue: 'Return spike', count: 2, impact: 22000, severity: 'High' }
+        ],
+        'Custom Report Builder': [
+            { dimension: 'Date', metric: 'Orders', value: 1520, note: 'Sample build' },
+            { dimension: 'City', metric: 'COD', value: 471000, note: 'Sample build' }
+        ]
+    };
+
+    function slugify(value) {
+        return String(value)
+            .toLowerCase()
+            .replace(/&/g, 'and')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)/g, '');
+    }
+
+    function escapeCsv(value) {
+        const text = String(value ?? '');
+        return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    }
+
+    function exportToExcel(reportTitle, rows) {
+        if (!rows.length) {
+            rows = [{ report: reportTitle, note: 'No dummy data available' }];
+        }
+
+        const headers = Object.keys(rows[0]);
+        const csvRows = [headers.join(',')];
+        rows.forEach((row) => {
+            csvRows.push(headers.map((key) => escapeCsv(row[key])).join(','));
+        });
+
+        const blob = new Blob([csvRows.join('\n')], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${slugify(reportTitle)}.xls`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function exportToPdf(reportTitle, rows) {
+        if (!rows.length) {
+            rows = [{ report: reportTitle, note: 'No dummy data available' }];
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const headers = Object.keys(rows[0]);
+        let y = 18;
+
+        doc.setFontSize(16);
+        doc.text(reportTitle, 14, y);
+        y += 8;
+        doc.setFontSize(10);
+        doc.text(headers.join(' | '), 14, y);
+        y += 6;
+
+        rows.forEach((row, index) => {
+            const line = headers.map((key) => String(row[key] ?? '')).join(' | ');
+            if (y > 280) {
+                doc.addPage();
+                y = 18;
+            }
+            doc.text(`${index + 1}. ${line}`, 14, y);
+            y += 7;
+        });
+
+        doc.save(`${slugify(reportTitle)}.pdf`);
+    }
+
+    document.querySelectorAll('.report-actions button').forEach((button) => {
+        button.addEventListener('click', function () {
+            const card = this.closest('.report-card');
+            const titleEl = card ? card.querySelector('.report-card-title') : null;
+            const reportTitle = titleEl ? titleEl.textContent.trim() : '';
+            const exportType = this.textContent.trim().toLowerCase();
+            const rows = reportData[reportTitle] || [{ report: reportTitle, note: 'Dummy data placeholder' }];
+
+            if (exportType === 'excel') {
+                exportToExcel(reportTitle, rows);
+            }
+            if (exportType === 'pdf') {
+                exportToPdf(reportTitle, rows);
+            }
+        });
+    });
 </script>
 
 </html>
