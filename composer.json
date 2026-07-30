@@ -1,0 +1,17 @@
+{
+    "name": "hp/medics-ecommerce-platform",
+    "autoload": {
+        "psr-4": {
+            "Hp\\MedicsEcommercePlatform\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Daniyal Khan",
+            "email": "dk720820@gmail.com"
+        }
+    ],
+    "require": {
+        "phpoffice/phpspreadsheet": "^5.9"
+    }
+}

@@ -1,54 +1,23 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Footer</title>
-</head>
 <style>
-  :root {
-    --text-muted: #6b7a8d;
-    --border: #e2e8f0;
-    --primary: #1a73e8;
-  }
-
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-
   .app-footer {
-    padding: 16px 28px;
-    border-top: 1px solid var(--border);
+    padding: 14px 28px;
+    border-top: 1px solid #e5e7eb;
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    font-size: 12px;
-    color: var(--text-muted);
+    font-size: 11.5px;
+    color: #9ca3af;
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 8px;
+    background: #fff;
   }
-
-  .app-footer a {
-    color: var(--text-muted);
-    text-decoration: none;
-  }
-
-  .app-footer a:hover {
-    color: var(--primary);
-  }
+  .app-footer a { color: #9ca3af; text-decoration: none; }
+  .app-footer a:hover { color: #0d0d0d; }
+  .footer-brand { font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: #0d0d0d; font-size: 11px; }
 </style>
 
-<body>
-  <footer class="app-footer">
-    <div>© 2026 AgenticSense Automation. All rights reserved.</div>
-    <div>E-Com Reconciliation System v1.0&nbsp;|&nbsp;Data Source: Leopard Courier API</div>
-  </footer>
-</body>
-<script>
-</script>
-
-</html>
+<footer class="app-footer">
+  <div><span class="footer-brand">Hanger Pakistan</span> &nbsp;·&nbsp; © 2026 All rights reserved.</div>
+  <div>Ops &amp; Finance System v1.0 &nbsp;·&nbsp; <a href="https://thehangerpakistan.com" target="_blank">thehangerpakistan.com</a></div>
+</footer>
