@@ -445,3 +445,104 @@ function exportRowsToExcel(array $rows, string $filename = 'export'): void
     (new XlsxWriter($spreadsheet))->save('php://output');
     exit;
 }
+
+
+/**
+ * Update the status of an order identified by its tracking number.
+ *
+ * @param string $trackingNo
+ * @param string $newStatus
+ * @return bool  True on success, false on failure.
+ */
+function updateOrderStatus($trackingNo, $newStatus) {
+    $filePath = __DIR__ . '/../upload/database.xlsx';
+    $tempFile = $filePath . '.tmp';
+
+    // Check if the original exists
+    if (!file_exists($filePath)) {
+        return ['success' => false, 'error' => "File not found: $filePath"];
+    }
+
+    // Retry up to 5 times if the copy or rename fails (e.g., locked)
+    for ($attempt = 0; $attempt < 5; $attempt++) {
+        try {
+            // 1️⃣ Copy the original file to a temporary file
+            if (!copy($filePath, $tempFile)) {
+                usleep(200000); // 0.2 sec
+                continue;
+            }
+
+            // 2️⃣ Load the temporary file (no lock on original)
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($tempFile);
+            $sheet = $spreadsheet->getSheetByName('orders');
+            if (!$sheet) {
+                @unlink($tempFile);
+                return ['success' => false, 'error' => "Sheet 'orders' not found"];
+            }
+
+            // 3️⃣ Find the row and update the cell
+            $rows = $sheet->toArray();
+            $header = array_shift($rows);
+
+            $trackingCol = array_search('Tracking No', $header);
+            $statusCol   = array_search('Status', $header);
+
+            if ($trackingCol === false || $statusCol === false) {
+                @unlink($tempFile);
+                return ['success' => false, 'error' => "Column headers missing"];
+            }
+
+            $rowIndex = null;
+            foreach ($rows as $idx => $row) {
+                if (isset($row[$trackingCol]) && trim($row[$trackingCol]) === trim($trackingNo)) {
+                    $rowIndex = $idx + 2;
+                    break;
+                }
+            }
+
+            if ($rowIndex === null) {
+                @unlink($tempFile);
+                return ['success' => false, 'error' => "Tracking number '$trackingNo' not found"];
+            }
+
+            // Convert column index to letter (e.g., 9 -> I)
+            $colLetter = '';
+            $colIndex = $statusCol + 1;
+            while ($colIndex > 0) {
+                $mod = ($colIndex - 1) % 26;
+                $colLetter = chr(65 + $mod) . $colLetter;
+                $colIndex = (int)(($colIndex - $mod) / 26);
+            }
+            $sheet->setCellValue($colLetter . $rowIndex, $newStatus);
+
+            // 4️⃣ Save the temporary file
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save($tempFile);
+
+            // 5️⃣ Replace the original with the temporary file (atomic rename)
+            if (!rename($tempFile, $filePath)) {
+                @unlink($tempFile);
+                usleep(200000);
+                continue;
+            }
+
+            return ['success' => true];
+
+        } catch (\PhpOffice\PhpSpreadsheet\Exception $e) {
+            @unlink($tempFile);
+            // If it's a lock error, retry
+            if (strpos($e->getMessage(), 'fopen') !== false || 
+                strpos($e->getMessage(), 'Resource temporarily unavailable') !== false) {
+                usleep(500000); // 0.5 sec
+                continue;
+            }
+            return ['success' => false, 'error' => "Spreadsheet error: " . $e->getMessage()];
+        } catch (Exception $e) {
+            @unlink($tempFile);
+            return ['success' => false, 'error' => "General error: " . $e->getMessage()];
+        }
+    }
+
+    // If we exit the loop, we failed after retries
+    return ['success' => false, 'error' => 'File busy after 5 attempts'];
+}

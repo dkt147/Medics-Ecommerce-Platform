@@ -252,6 +252,28 @@ function statusBadge(string $s): string {
         </div>
     </div>
 
+    <!-- Status update modal -->
+<div id="statusModal" style="display:none; position:fixed; top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);align-items:center;justify-content:center;z-index:9999;">
+    <div style="background:#fff; padding:30px 40px; border-radius:12px; max-width:400px; box-shadow:0 20px 40px rgba(0,0,0,0.3);">
+        <h3 style="margin-bottom:16px;">Update Order Status</h3>
+        <p><strong>Tracking:</strong> <span id="modalTracking"></span></p>
+        <p><strong>Current Status:</strong> <span id="modalCurrentStatus"></span></p>
+        <label style="display:block; margin:16px 0 8px;">New Status</label>
+        <select id="modalStatusSelect" class="filter-input" style="width:100%;">
+            <option value="Delivered">Delivered</option>
+            <option value="In Transit">In Transit</option>
+            <option value="Returned">Returned</option>
+            <option value="Pending">Pending</option>
+            <option value="Cancelled">Cancelled</option>
+            <option value="Prepaid">Prepaid</option>
+        </select>
+        <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+            <button id="modalCancelBtn" class="btn btn-outline">Cancel</button>
+            <button id="modalSaveBtn" class="btn btn-primary">Save</button>
+        </div>
+    </div>
+</div>
+
     <script>
         document.getElementById('page-title').textContent = 'Orders & Shipments';
         document.getElementById('page-bread').textContent = 'Modules / Orders & Shipments';
@@ -288,6 +310,87 @@ function statusBadge(string $s): string {
                 cutout: '60%'
             }
         });
+
+
+        let activeTrackingNo = null;
+
+document.querySelector('#page-orders table tbody').addEventListener('dblclick', function(e) {
+    // Find the closest row
+    const row = e.target.closest('tr');
+    if (!row) return;
+
+    // Get the tracking number from the first cell (column 0)
+    const td = row.querySelector('td:first-child');
+    if (!td) return;
+
+    const trackingNo = td.textContent.trim();
+    if (!trackingNo) return;
+
+    // Get current status from the status column (index 8)
+    const statusTd = row.querySelectorAll('td')[8];
+    const currentStatus = statusTd ? statusTd.textContent.trim() : '';
+
+    // Populate modal
+    document.getElementById('modalTracking').textContent = trackingNo;
+    document.getElementById('modalCurrentStatus').textContent = currentStatus;
+    document.getElementById('modalStatusSelect').value = currentStatus; // pre-select current
+    activeTrackingNo = trackingNo;
+
+    // Show modal
+    document.getElementById('statusModal').style.display = 'flex';
+});
+
+// Modal buttons
+document.getElementById('modalCancelBtn').addEventListener('click', function() {
+    document.getElementById('statusModal').style.display = 'none';
+});
+
+document.getElementById('modalSaveBtn').addEventListener('click', function() {
+    const newStatus = document.getElementById('modalStatusSelect').value;
+    if (!activeTrackingNo) return;
+
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    fetch('update_order_status.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `tracking_no=${encodeURIComponent(activeTrackingNo)}&status=${encodeURIComponent(newStatus)}`
+    })
+    .then(response => response.text()) // get raw text
+    .then(text => {
+        console.log('Raw response:', text);
+        try {
+            const data = JSON.parse(text);
+            if (data.success) {
+                alert('Status updated successfully!');
+                location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+        } catch (e) {
+            alert('Invalid JSON response: ' + text.substring(0, 200));
+        }
+    })
+    .catch(err => {
+        alert('Network error: ' + err.message);
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+        document.getElementById('statusModal').style.display = 'none';
+        activeTrackingNo = null;
+    });
+});
+
+// Close modal if clicking outside the white box
+document.getElementById('statusModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        this.style.display = 'none';
+        activeTrackingNo = null;
+    }
+});
     </script>
 </body>
 </html>
