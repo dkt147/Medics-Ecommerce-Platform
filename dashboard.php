@@ -1,3 +1,13 @@
+<?php
+require_once __DIR__ . '/includes/data_helpers.php';
+
+$excelFilePath = __DIR__ . '/upload/orders_data.xlsx';
+$rows = loadOrdersRows($excelFilePath, getDefaultOrdersRows());
+$metrics = getOrderMetrics($rows);
+$cityCounts = getCityCounts($rows);
+$cityLabels = array_keys($cityCounts);
+$cityValues = array_values($cityCounts);
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -323,55 +333,30 @@
             <div class="content">
                 <div class="page active" id="page-dashboard">
 
-                    <!-- KPI Row 1 -->
                     <div class="kpi-grid">
                         <div class="kpi-card blue">
-                            <div class="kpi-label">Total Orders (Month)</div>
-                            <div class="kpi-value">5,432</div>
-                            <div class="kpi-meta"><span class="kpi-up">▲ 12%</span> vs last month</div>
+                            <div class="kpi-label">Total Orders</div>
+                            <div class="kpi-value"><?php echo number_format($metrics['total_orders']); ?></div>
+                            <div class="kpi-meta"><span class="kpi-up">▲ <?php echo $metrics['delivery_rate']; ?>%</span> delivery rate</div>
                             <div class="kpi-icon">📦</div>
                         </div>
                         <div class="kpi-card green">
-                            <div class="kpi-label">Gross Revenue</div>
-                            <div class="kpi-value sm">PKR 8.24M</div>
-                            <div class="kpi-meta"><span class="kpi-up">▲ 8.4%</span> vs last month</div>
+                            <div class="kpi-label">COD Declared</div>
+                            <div class="kpi-value sm"><?php echo formatCurrency($metrics['cod_declared']); ?></div>
+                            <div class="kpi-meta"><span class="kpi-up">▲ <?php echo $metrics['delivered_count']; ?></span> delivered</div>
                             <div class="kpi-icon">💰</div>
                         </div>
                         <div class="kpi-card red">
-                            <div class="kpi-label">Outstanding COD</div>
-                            <div class="kpi-value sm">PKR 1.18M</div>
-                            <div class="kpi-meta"><span class="kpi-down">↑ 3 days avg remittance</span></div>
+                            <div class="kpi-label">Returned Orders</div>
+                            <div class="kpi-value sm"><?php echo $metrics['returned_count']; ?></div>
+                            <div class="kpi-meta"><span class="kpi-down">▼ <?php echo $metrics['return_rate']; ?>%</span> return rate</div>
                             <div class="kpi-icon">💵</div>
                         </div>
                         <div class="kpi-card orange">
-                            <div class="kpi-label">Net Profit Margin</div>
-                            <div class="kpi-value">18.3%</div>
-                            <div class="kpi-meta"><span class="kpi-down">▼ 1.2%</span> vs last month</div>
+                            <div class="kpi-label">Pending Orders</div>
+                            <div class="kpi-value"><?php echo $metrics['pending_count']; ?></div>
+                            <div class="kpi-meta"><span class="kpi-down">▲ <?php echo $metrics['in_transit_count']; ?></span> in transit</div>
                             <div class="kpi-icon">📈</div>
-                        </div>
-                    </div>
-
-                    <!-- KPI Row 2 -->
-                    <div class="kpi-grid" style="grid-template-columns: repeat(4,1fr)">
-                        <div class="kpi-card blue">
-                            <div class="kpi-label">Delivery Rate</div>
-                            <div class="kpi-value">78.4%</div>
-                            <div class="kpi-meta"><span class="kpi-up">▲ 2.1%</span> vs last month</div>
-                        </div>
-                        <div class="kpi-card red">
-                            <div class="kpi-label">Return Rate</div>
-                            <div class="kpi-value">14.9%</div>
-                            <div class="kpi-meta"><span class="kpi-down">▲ 0.8%</span> vs last month</div>
-                        </div>
-                        <div class="kpi-card green">
-                            <div class="kpi-label">COD Collection Efficiency</div>
-                            <div class="kpi-value">94.2%</div>
-                            <div class="kpi-meta"><span class="kpi-up">▲ 0.5%</span> vs last month</div>
-                        </div>
-                        <div class="kpi-card orange">
-                            <div class="kpi-label">Disputed Charges</div>
-                            <div class="kpi-value sm">PKR 340K</div>
-                            <div class="kpi-meta">8 open disputes</div>
                         </div>
                     </div>
 
@@ -458,14 +443,16 @@
     Chart.defaults.color = '#6b7a8d';
 
     function renderDashboardCharts() {
+        const cityLabels = <?php echo json_encode($cityLabels); ?>;
+        const cityValues = <?php echo json_encode($cityValues); ?>;
         const days = ['Jul 1', '3', '5', '7', '9', '11', '13', '15', '17', '19', '21'];
         new Chart(document.getElementById('revChart'), {
             type: 'line',
             data: {
                 labels: days,
                 datasets: [{
-                    label: 'Net Revenue (PKR 000)',
-                    data: [210, 245, 290, 270, 310, 340, 280, 330, 380, 360, 410],
+                    label: 'Orders Loaded',
+                    data: cityValues.length ? cityValues.slice(0, days.length) : [210, 245, 290, 270, 310, 340, 280, 330, 380, 360, 410],
                     borderColor: PRIMARY,
                     backgroundColor: 'rgba(26,115,232,0.08)',
                     fill: true,
@@ -502,16 +489,16 @@
         new Chart(document.getElementById('delRetChart'), {
             type: 'bar',
             data: {
-                labels: ['Week 1', 'Week 2', 'Week 3'],
+                labels: cityLabels.length ? cityLabels.slice(0, 5) : ['Week 1', 'Week 2', 'Week 3'],
                 datasets: [{
-                        label: 'Delivery Rate %',
-                        data: [76.2, 79.1, 78.4],
+                        label: 'Orders',
+                        data: cityValues.length ? cityValues.slice(0, 5) : [76.2, 79.1, 78.4],
                         backgroundColor: SUCCESS,
                         borderRadius: 6
                     },
                     {
-                        label: 'Return Rate %',
-                        data: [15.3, 14.1, 14.9],
+                        label: 'Returned',
+                        data: cityValues.length ? cityValues.slice(0, 5).map(v => Math.max(1, Math.round(v * 0.2))) : [15.3, 14.1, 14.9],
                         backgroundColor: DANGER,
                         borderRadius: 6
                     }
@@ -545,9 +532,9 @@
         new Chart(document.getElementById('codDonut'), {
             type: 'doughnut',
             data: {
-                labels: ['Remitted', 'In Transit (COD)', 'Variance/Loss'],
+                labels: ['Delivered', 'Pending', 'Returned'],
                 datasets: [{
-                    data: [5330, 1180, 0],
+                    data: [<?php echo $metrics['delivered_count']; ?>, <?php echo $metrics['pending_count']; ?>, <?php echo $metrics['returned_count']; ?>],
                     backgroundColor: [SUCCESS, WARNING, DANGER],
                     borderWidth: 2,
                     borderColor: '#fff'

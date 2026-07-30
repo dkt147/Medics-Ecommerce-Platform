@@ -237,10 +237,5 @@
     </div>
   </aside>
 </body>
-<script>
-  // Static for now. Active nav-item is hardcoded to "Dashboard".
-  // Jab baaki pages (orders.php, cod.php, etc.) ban jaye, un pages me
-  // is sidebar ke corresponding <a> par manually class="nav-item active" laga dena.
-</script>
 
 </html>

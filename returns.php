@@ -1,3 +1,21 @@
+<?php
+require_once __DIR__ . '/includes/data_helpers.php';
+
+$excelFilePath = __DIR__ . '/upload/orders_data.xlsx';
+$rows = loadOrdersRows($excelFilePath, getDefaultOrdersRows());
+$returnRows = getReturnRows($rows);
+$metrics = getOrderMetrics($rows);
+$cityCounts = getCityCounts($returnRows);
+$cityLabels = array_keys($cityCounts);
+$cityValues = array_values($cityCounts);
+$reasonCounts = [];
+foreach ($returnRows as $row) {
+    $reason = trim($row['returned_by'] ?? '') ?: 'Customer Refused';
+    $reasonCounts[$reason] = ($reasonCounts[$reason] ?? 0) + 1;
+}
+$reasonLabels = array_keys($reasonCounts);
+$reasonValues = array_values($reasonCounts);
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -335,21 +353,21 @@
                     <div class="kpi-grid">
                         <div class="kpi-card blue">
                             <div class="kpi-label">Total Returns</div>
-                            <div class="kpi-value">808</div>
-                            <div class="kpi-meta kpi-down">14.9% return rate</div>
+                            <div class="kpi-value"><?php echo count($returnRows); ?></div>
+                            <div class="kpi-meta kpi-down"><?php echo $metrics['return_rate']; ?>% return rate</div>
                         </div>
                         <div class="kpi-card green">
-                            <div class="kpi-label">Financial Loss (Returns)</div>
-                            <div class="kpi-value">PKR 6.8L</div>
+                            <div class="kpi-label">Returned Orders</div>
+                            <div class="kpi-value"><?php echo $metrics['returned_count']; ?></div>
                         </div>
                         <div class="kpi-card red">
-                            <div class="kpi-label">Returned — Sellable</div>
-                            <div class="kpi-value">601</div>
-                            <div class="kpi-meta kpi-up">74.4% recoverable</div>
+                            <div class="kpi-label">Pending Orders</div>
+                            <div class="kpi-value"><?php echo $metrics['pending_count']; ?></div>
+                            <div class="kpi-meta kpi-up"><?php echo $metrics['in_transit_count']; ?> in transit</div>
                         </div>
                         <div class="kpi-card orange">
-                            <div class="kpi-label">Returned — Damaged/Lost</div>
-                            <div class="kpi-value">207</div>
+                            <div class="kpi-label">COD Declared</div>
+                            <div class="kpi-value"><?php echo formatCurrency($metrics['cod_declared']); ?></div>
                         </div>
                     </div>
 
@@ -381,56 +399,18 @@
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    <?php foreach ($returnRows as $row): ?>
                                     <tr>
-                                        <td><b>RET-0012843190</b></td>
-                                        <td>ORD-9803</td>
-                                        <td>Customer Refused</td>
-                                        <td>Jul 19</td>
-                                        <td>Jul 21</td>
-                                        <td><span class="badge badge-green">Sellable</span></td>
-                                        <td>No</td>
-                                        <td>PKR 420</td>
+                                        <td><b><?php echo htmlspecialchars($row['tracking_no'] ?? ''); ?></b></td>
+                                        <td><a href="orders.php?order_ref=<?php echo urlencode($row['order_ref'] ?? ''); ?>" style="color:var(--primary);text-decoration:none;font-weight:600;"><?php echo htmlspecialchars($row['order_ref'] ?? ''); ?></a></td>
+                                        <td><?php echo htmlspecialchars($row['returned_by'] ?: 'Customer Refused'); ?></td>
+                                        <td><?php echo htmlspecialchars($row['date'] ?? ''); ?></td>
+                                        <td><?php echo htmlspecialchars($row['delivery_date'] ?? ''); ?></td>
+                                        <td><span class="badge badge-<?php echo strtolower(trim($row['status'] ?? '')) === 'returned' ? 'green' : 'yellow'; ?>"><?php echo htmlspecialchars(ucfirst($row['status'] ?? 'Returned')); ?></span></td>
+                                        <td><?php echo htmlspecialchars($row['cod_amount'] ?: 'No'); ?></td>
+                                        <td><?php echo htmlspecialchars($row['cod_amount'] ?: 'PKR 0'); ?></td>
                                     </tr>
-                                    <tr>
-                                        <td><b>RET-0012834200</b></td>
-                                        <td>ORD-9785</td>
-                                        <td>Wrong Item</td>
-                                        <td>Jul 17</td>
-                                        <td>Jul 20</td>
-                                        <td><span class="badge badge-red">Damaged</span></td>
-                                        <td>No</td>
-                                        <td>PKR 2,800</td>
-                                    </tr>
-                                    <tr>
-                                        <td><b>RET-0012821300</b></td>
-                                        <td>ORD-9762</td>
-                                        <td>Not Available</td>
-                                        <td>Jul 14</td>
-                                        <td>Jul 18</td>
-                                        <td><span class="badge badge-green">Sellable</span></td>
-                                        <td>No</td>
-                                        <td>PKR 420</td>
-                                    </tr>
-                                    <tr>
-                                        <td><b>RET-0012810900</b></td>
-                                        <td>ORD-9740</td>
-                                        <td>Address Incorrect</td>
-                                        <td>Jul 12</td>
-                                        <td>Jul 16</td>
-                                        <td><span class="badge badge-red">Lost</span></td>
-                                        <td>No</td>
-                                        <td>PKR 5,200</td>
-                                    </tr>
-                                    <tr>
-                                        <td><b>RET-0012799400</b></td>
-                                        <td>ORD-9720</td>
-                                        <td>Customer Refused</td>
-                                        <td>Jul 10</td>
-                                        <td>Jul 13</td>
-                                        <td><span class="badge badge-green">Sellable</span></td>
-                                        <td>Partial — PKR 500</td>
-                                        <td>PKR 700</td>
-                                    </tr>
+                                    <?php endforeach; ?>
                                 </tbody>
                             </table>
                         </div>
@@ -459,13 +439,18 @@
     Chart.defaults.font.size = 12;
     Chart.defaults.color = '#6b7a8d';
 
+    const returnCityLabels = <?php echo json_encode($cityLabels); ?>;
+    const returnCityValues = <?php echo json_encode($cityValues); ?>;
+    const returnReasonLabels = <?php echo json_encode($reasonLabels); ?>;
+    const returnReasonValues = <?php echo json_encode($reasonValues); ?>;
+
     new Chart(document.getElementById('returnCityChart'), {
         type: 'bar',
         data: {
-            labels: ['Karachi', 'Lahore', 'Islamabad', 'Faisalabad', 'Rawalpindi', 'Multan'],
+            labels: returnCityLabels.length ? returnCityLabels : ['Karachi', 'Lahore', 'Islamabad', 'Faisalabad', 'Rawalpindi', 'Multan'],
             datasets: [{
                 label: 'Returns',
-                data: [24, 13, 11, 14, 12, 17],
+                data: returnCityValues.length ? returnCityValues : [24, 13, 11, 14, 12, 17],
                 backgroundColor: '#dc2626',
                 borderRadius: 6,
                 maxBarThickness: 30
@@ -487,9 +472,9 @@
     new Chart(document.getElementById('returnReasonChart'), {
         type: 'doughnut',
         data: {
-            labels: ['Customer Refused', 'Wrong Item', 'Not Available', 'Address Incorrect', 'Damaged in Transit', 'Other'],
+            labels: returnReasonLabels.length ? returnReasonLabels : ['Customer Refused', 'Wrong Item', 'Not Available', 'Address Incorrect', 'Damaged in Transit', 'Other'],
             datasets: [{
-                data: [32, 18, 14, 12, 10, 14],
+                data: returnReasonValues.length ? returnReasonValues : [32, 18, 14, 12, 10, 14],
                 backgroundColor: [DANGER, WARNING, INFO, GREY, '#7c3aed', '#f97316'],
                 borderColor: '#fff',
                 borderWidth: 2

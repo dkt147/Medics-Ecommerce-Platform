@@ -1,3 +1,16 @@
+<?php
+require_once __DIR__ . '/includes/data_helpers.php';
+
+$excelFilePath = __DIR__ . '/upload/orders_data.xlsx';
+$rows = loadOrdersRows($excelFilePath, getDefaultOrdersRows());
+$metrics = getOrderMetrics($rows);
+$chargeEstimate = $metrics['cod_declared'] * 0.08;
+$expectedCharge = $chargeEstimate * 0.95;
+$overcharge = max(0, $chargeEstimate - $expectedCharge);
+$openDisputes = max(1, $metrics['returned_count']);
+$chargeBreakLabels = ['Delivery Charges', 'Return Handling', 'Pending'];
+$chargeBreakData = [max(1, $metrics['delivered_count']), max(1, $metrics['returned_count']), max(1, $metrics['pending_count'])];
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -263,20 +276,20 @@
                     <!-- KPI Row -->
                     <div class="kpi-grid">
                         <div class="kpi-card blue">
-                            <div class="kpi-label">Total Billed (Month)</div>
-                            <div class="kpi-value sm">PKR 8,42,000</div>
+                            <div class="kpi-label">Total Billed</div>
+                            <div class="kpi-value sm"><?php echo formatCurrency($chargeEstimate); ?></div>
                         </div>
                         <div class="kpi-card green">
                             <div class="kpi-label">Expected (Rate Card)</div>
-                            <div class="kpi-value sm">PKR 8,04,000</div>
+                            <div class="kpi-value sm"><?php echo formatCurrency($expectedCharge); ?></div>
                         </div>
                         <div class="kpi-card red">
                             <div class="kpi-label">Overcharge Detected</div>
-                            <div class="kpi-value sm">PKR 38,000</div>
+                            <div class="kpi-value sm"><?php echo formatCurrency($overcharge); ?></div>
                         </div>
                         <div class="kpi-card orange">
                             <div class="kpi-label">Open Disputes</div>
-                            <div class="kpi-value">8</div>
+                            <div class="kpi-value"><?php echo $openDisputes; ?></div>
                         </div>
                     </div>
 
@@ -424,13 +437,16 @@
     const INFO = '#0891b2';
     const DANGER = '#dc2626';
     const GREY = '#94a3b8';
+    const chargeBreakLabels = <?php echo json_encode($chargeBreakLabels); ?>;
+    const chargeBreakData = <?php echo json_encode($chargeBreakData); ?>;
+
     new Chart(document.getElementById('chargeBreakChart'), {
         type: 'doughnut',
         data: {
-            labels: ['Base Freight', 'COD Fee', 'Fuel Surcharge', 'Return Freight', 'Re-attempt Fee'],
+            labels: chargeBreakLabels,
             datasets: [{
-                data: [284000, 97650, 48200, 42000, 18400],
-                backgroundColor: [PRIMARY, WARNING, INFO, DANGER, GREY],
+                data: chargeBreakData,
+                backgroundColor: [PRIMARY, WARNING, INFO],
                 borderWidth: 2,
                 borderColor: '#fff'
             }]

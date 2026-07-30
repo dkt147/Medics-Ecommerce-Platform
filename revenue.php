@@ -1,3 +1,19 @@
+<?php
+require_once __DIR__ . '/includes/data_helpers.php';
+
+$excelFilePath = __DIR__ . '/upload/orders_data.xlsx';
+$rows = loadOrdersRows($excelFilePath, getDefaultOrdersRows());
+$metrics = getOrderMetrics($rows);
+$codDeclared = $metrics['cod_declared'];
+$estimatedRevenue = $codDeclared * 1.15;
+$returnsValue = max(0, $metrics['returned_count'] * 5000);
+$netRevenue = $estimatedRevenue - $returnsValue;
+$aov = $metrics['total_orders'] > 0 ? round($estimatedRevenue / $metrics['total_orders']) : 0;
+$channelLabels = ['Delivered Orders', 'Returned Orders', 'Pending Orders'];
+$channelData = [$metrics['delivered_count'], $metrics['returned_count'], max(1, $metrics['pending_count'])];
+$paymentLabels = ['Delivered', 'Returned', 'Pending'];
+$paymentData = [$metrics['delivered_count'], $metrics['returned_count'], max(1, $metrics['pending_count'])];
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -275,19 +291,19 @@
                     <div class="kpi-grid">
                         <div class="kpi-card blue">
                             <div class="kpi-label">Gross Revenue</div>
-                            <div class="kpi-value">PKR 8.24M</div>
+                            <div class="kpi-value"><?php echo formatCurrency($estimatedRevenue); ?></div>
                         </div>
                         <div class="kpi-card red">
                             <div class="kpi-label">Less Returns</div>
-                            <div class="kpi-value">-PKR 1.21M</div>
+                            <div class="kpi-value">-<?php echo formatCurrency($returnsValue); ?></div>
                         </div>
                         <div class="kpi-card green">
                             <div class="kpi-label">Net Revenue</div>
-                            <div class="kpi-value">PKR 7.03M</div>
+                            <div class="kpi-value"><?php echo formatCurrency($netRevenue); ?></div>
                         </div>
                         <div class="kpi-card orange">
                             <div class="kpi-label">AOV (Avg Order Value)</div>
-                            <div class="kpi-value">PKR 1,517</div>
+                            <div class="kpi-value"><?php echo formatCurrency($aov); ?></div>
                         </div>
                     </div>
 
@@ -384,13 +400,18 @@
     Chart.defaults.font.size = 12;
     Chart.defaults.color = '#6b7a8d';
 
+    const channelLabels = <?php echo json_encode($channelLabels); ?>;
+    const channelValues = <?php echo json_encode($channelData); ?>;
+    const paymentLabels = <?php echo json_encode($paymentLabels); ?>;
+    const paymentValues = <?php echo json_encode($paymentData); ?>;
+
     new Chart(document.getElementById('channelChart'), {
         type: 'doughnut',
         data: {
-            labels: ['Own Website', 'Daraz', 'Other Marketplaces', 'Wholesale'],
+            labels: channelLabels,
             datasets: [{
-                data: [45, 28, 17, 10],
-                backgroundColor: ['#1a73e8', '#f97316', '#16a34a', '#0ea5e9'],
+                data: channelValues,
+                backgroundColor: ['#1a73e8', '#f97316', '#16a34a'],
                 borderColor: '#fff',
                 borderWidth: 2
             }]
@@ -411,10 +432,10 @@
     new Chart(document.getElementById('paymentChart'), {
         type: 'doughnut',
         data: {
-            labels: ['COD Orders', 'Prepaid Orders'],
+            labels: paymentLabels,
             datasets: [{
-                data: [78, 22],
-                backgroundColor: ['#dc2626', '#16a34a'],
+                data: paymentValues,
+                backgroundColor: ['#dc2626', '#16a34a', '#f59e0b'],
                 borderColor: '#fff',
                 borderWidth: 2
             }]
