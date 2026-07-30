@@ -4,7 +4,7 @@
  * Central data-access layer for Medics E-Commerce Platform.
  * All pages require_once this file and call the helpers below.
  *
- * Single source of truth: upload/medics_database.xlsx
+ * Single source of truth: upload/database.xlsx
  * Each sheet maps 1-to-1 to a tab in that file.
  */
 
@@ -17,7 +17,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx as XlsxWriter;
 // ─────────────────────────────────────────────
 //  CONFIG
 // ─────────────────────────────────────────────
-define('DB_EXCEL_PATH', __DIR__ . '/../upload/medics_database.xlsx');
+define('DB_EXCEL_PATH', __DIR__ . '/../upload/database.xlsx');
 
 // ─────────────────────────────────────────────
 //  CORE LOADER  (reads any named sheet)
